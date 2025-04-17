@@ -1,4 +1,3 @@
-// imports
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -28,8 +27,12 @@ import {
   doc,
 } from "firebase/firestore";
 import TransactionModal from "../components/TransactionModal";
+import jsPDF from "jspdf";
+import "jspdf-autotable";
+import FiltroSection from "../components/FiltroSection";
+import ResumoCard from "../components/ResumoCard";
+import { incomeCategories, expenseCategories } from "../utils/categories";
 
-// cores do gráfico
 const COLORS = ["#22c55e", "#ef4444"];
 
 export default function Dashboard() {
@@ -37,13 +40,13 @@ export default function Dashboard() {
   const [transactions, setTransactions] = useState([]);
   const [userName, setUserName] = useState("");
   const [filterType, setFilterType] = useState("todos");
+  const [filterCategory, setFilterCategory] = useState("todas");
   const [startDate, setStartDate] = useState("");
   const [endDate, setEndDate] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState(null);
   const [dateError, setDateError] = useState("");
 
-  // Fetch usuário + transações
   useEffect(() => {
     if (!user) return;
 
@@ -79,7 +82,6 @@ export default function Dashboard() {
     return () => unsub();
   }, [user]);
 
-  // Validação de data
   useEffect(() => {
     if (startDate && endDate && new Date(startDate) > new Date(endDate)) {
       setDateError("Data inicial não pode ser maior que a final.");
@@ -88,43 +90,15 @@ export default function Dashboard() {
     }
   }, [startDate, endDate]);
 
-  // Exportação para CSV
-  const exportToCSV = () => {
-    const rows = filteredTransactions.map((t) => ({
-      Tipo: t.type,
-      Categoria: t.category || "-",
-      Valor: t.amount.toFixed(2),
-      Data: t.createdAt.toLocaleDateString("pt-BR"),
-    }));
-
-    const csv = [
-      ["Tipo", "Categoria", "Valor", "Data"],
-      ...rows.map((r) => [r.Tipo, r.Categoria, r.Valor, r.Data]),
-    ]
-      .map((row) => row.join(";"))
-      .join("\n");
-
-    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", "transacoes.csv");
-    link.click();
-  };
-
-  // Filtro
   const filteredTransactions = transactions.filter((t) => {
     const start = startDate ? new Date(startDate) : null;
-    const end = endDate
-      ? new Date(new Date(endDate).getTime() + 24 * 60 * 60 * 1000 - 1)
-      : null;
+    const end = endDate ? new Date(new Date(endDate).getTime() + 86399999) : null;
 
-    const periodMatch =
-      (!start || t.createdAt >= start) && (!end || t.createdAt <= end);
-
+    const periodMatch = (!start || t.createdAt >= start) && (!end || t.createdAt <= end);
     const typeMatch = filterType === "todos" || t.type === filterType;
+    const categoryMatch = filterCategory === "todas" || t.category === filterCategory;
 
-    return periodMatch && typeMatch;
+    return periodMatch && typeMatch && categoryMatch;
   });
 
   const totalGanhos = filteredTransactions
@@ -142,144 +116,121 @@ export default function Dashboard() {
     { name: "Gastos", value: totalGastos },
   ];
 
-  // Agrupamento mensal
   const groupedByMonth = () => {
     const grouped = {};
-
     filteredTransactions.forEach((t) => {
-      const month = t.createdAt.toLocaleString("pt-BR", {
-        month: "short",
-        year: "numeric",
-      });
-
+      const month = t.createdAt.toLocaleString("pt-BR", { month: "short", year: "numeric" });
       if (!grouped[month]) grouped[month] = { month, ganhos: 0, gastos: 0 };
-
       if (t.type === "ganho") grouped[month].ganhos += t.amount;
       if (t.type === "gasto") grouped[month].gastos += t.amount;
     });
-
-    return Object.values(grouped).sort((a, b) => {
-      return new Date("01 " + a.month) - new Date("01 " + b.month);
-    });
+    return Object.values(grouped).sort((a, b) => new Date("01 " + a.month) - new Date("01 " + b.month));
   };
 
-  const handleEdit = (transaction) => {
-    setEditingTransaction(transaction);
-    setModalOpen(true);
+  const exportToPDF = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(18);
+    doc.text("Relatório de Transações", 14, 22);
+    doc.setFontSize(12);
+    doc.text(`Ganhos: R$ ${totalGanhos.toFixed(2)}`, 14, 32);
+    doc.text(`Gastos: R$ ${totalGastos.toFixed(2)}`, 14, 39);
+    doc.text(`Saldo: R$ ${balance.toFixed(2)}`, 14, 46);
+
+    const ganhos = filteredTransactions.filter((t) => t.type === "ganho");
+    const gastos = filteredTransactions.filter((t) => t.type === "gasto");
+
+    const formatTable = (title, data, startY) => {
+      doc.setFontSize(14);
+      doc.text(title, 14, startY);
+      const rows = data.map((t) => [t.category || "-", t.amount.toFixed(2), t.createdAt.toLocaleDateString("pt-BR")]);
+      doc.autoTable({
+        head: [["Categoria", "Valor (R$)", "Data"]],
+        body: rows,
+        startY: startY + 4,
+        styles: { fontSize: 10 },
+      });
+      return doc.lastAutoTable.finalY + 6;
+    };
+
+    let y = 54;
+    if (ganhos.length > 0) y = formatTable("Ganhos", ganhos, y);
+    if (gastos.length > 0) formatTable("Gastos", gastos, y);
+
+    const dateStr = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
+    doc.save(`transacoes_${dateStr}.pdf`);
   };
 
-  const handleNew = () => {
-    setEditingTransaction(null);
-    setModalOpen(true);
-  };
-
-  const handleClearFilters = () => {
-    setStartDate("");
-    setEndDate("");
-    setFilterType("todos");
-  };
+  const availableCategories =
+    filterType === "ganho"
+      ? incomeCategories
+      : filterType === "gasto"
+      ? expenseCategories
+      : [...new Set(transactions.map((t) => t.category))];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 p-6 text-gray-900 dark:text-gray-100 transition-colors">
-      <header className="flex justify-between items-center mb-8">
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 text-gray-900 dark:text-gray-100 transition-colors">
+      <header className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Bem-vindo, {userName}</h1>
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 w-full sm:w-auto justify-between">
           <DarkModeToggle />
           <button
             onClick={() => signOut(auth)}
-            className="flex items-center gap-2 text-red-500 hover:text-red-700 dark:hover:text-red-400"
+            className="flex items-center gap-2 text-red-500 hover:text-red-700 dark:hover:text-red-400 transition-colors"
           >
             <LogOut size={20} />
+            <span className="hidden sm:inline">Sair</span>
           </button>
         </div>
       </header>
 
-      <div className="flex flex-wrap gap-4 mb-2 items-end">
-        <select
-          value={filterType}
-          onChange={(e) => setFilterType(e.target.value)}
-          className="border p-2 rounded bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
-        >
-          <option value="todos">Todos</option>
-          <option value="ganho">Ganhos</option>
-          <option value="gasto">Gastos</option>
-        </select>
-
-        <input
-          type="date"
-          value={startDate}
-          onChange={(e) => setStartDate(e.target.value)}
-          className="border p-2 rounded bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
-        />
-
-        <input
-          type="date"
-          value={endDate}
-          onChange={(e) => setEndDate(e.target.value)}
-          className="border p-2 rounded bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
-        />
-
-        <button
-          onClick={handleClearFilters}
-          className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
-        >
-          Limpar Filtros
-        </button>
-
-        <button
-          onClick={exportToCSV}
-          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600"
-        >
-          Exportar CSV
-        </button>
-
-        <button
-          onClick={handleNew}
-          className="ml-auto bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
-        >
-          Nova Transação
-        </button>
-      </div>
-
-      {dateError && (
-        <p className="text-red-600 text-sm mt-1 mb-4">{dateError}</p>
-      )}
-
-      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-4">
-        Total de transações no período:{" "}
-        <strong>{filteredTransactions.length}</strong>
-      </p>
+      <FiltroSection
+        filterType={filterType}
+        setFilterType={setFilterType}
+        filterCategory={filterCategory}
+        setFilterCategory={setFilterCategory}
+        startDate={startDate}
+        setStartDate={setStartDate}
+        endDate={endDate}
+        setEndDate={setEndDate}
+        onClearFilters={() => {
+          setStartDate("");
+          setEndDate("");
+          setFilterType("todos");
+          setFilterCategory("todas");
+        }}
+        onExportPDF={exportToPDF}
+        onNovaTransacao={() => {
+          setEditingTransaction(null);
+          setModalOpen(true);
+        }}
+        dateError={dateError}
+        availableCategories={availableCategories}
+      />
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6"
       >
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg col-span-1 md:col-span-2">
-          <h2 className="text-lg font-semibold mb-4">Resumo Financeiro</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Ganhos</p>
-              <p className="text-xl font-bold text-green-500">
-                R$ {totalGanhos.toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Gastos</p>
-              <p className="text-xl font-bold text-red-500">
-                R$ {totalGastos.toFixed(2)}
-              </p>
-            </div>
-            <div>
-              <p className="text-sm text-gray-500 dark:text-gray-400">Saldo</p>
-              <p
-                className={`text-xl font-bold ${balance >= 0 ? "text-green-600" : "text-red-600"}`}
-              >
-                R$ {balance.toFixed(2)}
-              </p>
-            </div>
-          </div>
+        <ResumoCard label="Ganhos" value={totalGanhos} color="text-green-500" />
+        <ResumoCard label="Gastos" value={totalGastos} color="text-red-500" />
+        <ResumoCard label="Saldo" value={balance} color={balance >= 0 ? "text-green-600" : "text-red-600"} />
+      </motion.div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg md:col-span-2">
+          <h2 className="text-lg font-semibold mb-4">Evolução por Mês</h2>
+          <ResponsiveContainer width="100%" height={300}>
+            <BarChart data={groupedByMonth()}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="month" stroke="#ccc" />
+              <YAxis stroke="#ccc" />
+              <Tooltip />
+              <Bar dataKey="ganhos" fill="#22c55e" name="Ganhos" />
+              <Bar dataKey="gastos" fill="#ef4444" name="Gastos" />
+            </BarChart>
+          </ResponsiveContainer>
         </div>
 
         <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
@@ -303,25 +254,10 @@ export default function Dashboard() {
             </PieChart>
           </ResponsiveContainer>
         </div>
-      </motion.div>
-
-      {/* Gráfico de Barras */}
-      <div className="mt-6 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
-        <h2 className="text-lg font-semibold mb-4">Evolução por Mês</h2>
-        <ResponsiveContainer width="100%" height={300}>
-          <BarChart data={groupedByMonth()}>
-            <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" stroke="#ccc" />
-            <YAxis stroke="#ccc" />
-            <Tooltip />
-            <Bar dataKey="ganhos" fill="#22c55e" name="Ganhos" />
-            <Bar dataKey="gastos" fill="#ef4444" name="Gastos" />
-          </BarChart>
-        </ResponsiveContainer>
       </div>
 
       <div className="mt-6">
-        <TransactionList transactions={filteredTransactions} onEdit={handleEdit} />
+        <TransactionList transactions={filteredTransactions} onEdit={(t) => { setEditingTransaction(t); setModalOpen(true); }} />
       </div>
 
       <TransactionModal

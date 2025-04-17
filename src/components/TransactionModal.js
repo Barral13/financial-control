@@ -5,9 +5,7 @@ import { addDoc, updateDoc, doc, collection, serverTimestamp } from "firebase/fi
 import { useAuthState } from "react-firebase-hooks/auth";
 import { toast } from "react-hot-toast";
 import { X } from "lucide-react";
-
-const incomeCategories = ["Salário", "Investimentos", "Doações", "Outros"];
-const expenseCategories = ["Alimentação", "Transporte", "Lazer", "Educação", "Saúde", "Moradia", "Impostos", "Outros"];
+import { incomeCategories, expenseCategories } from "../utils/categories";
 
 export default function TransactionModal({ isOpen, onClose, transaction }) {
   const [type, setType] = useState("ganho");
@@ -15,7 +13,6 @@ export default function TransactionModal({ isOpen, onClose, transaction }) {
   const [category, setCategory] = useState("");
   const [user] = useAuthState(auth);
 
-  // Função para limpar o formulário
   const resetForm = () => {
     setType("ganho");
     setAmount("");
@@ -41,8 +38,8 @@ export default function TransactionModal({ isOpen, onClose, transaction }) {
     e.preventDefault();
     toast.dismiss();
 
-    if (!user) return toast.error("Você precisa estar logado.", { id: "auth-error" });
-    if (!amount || !category) return toast.error("Preencha todos os campos.", { id: "field-error" });
+    if (!user) return toast.error("Você precisa estar logado.");
+    if (!amount || !category) return toast.error("Preencha todos os campos.");
 
     try {
       if (transaction) {
@@ -51,7 +48,7 @@ export default function TransactionModal({ isOpen, onClose, transaction }) {
           amount: parseFloat(amount),
           category,
         });
-        toast.success("Transação atualizada!", { id: "modal-update" });
+        toast.success("Transação atualizada!");
       } else {
         await addDoc(collection(db, "transactions"), {
           type,
@@ -60,11 +57,11 @@ export default function TransactionModal({ isOpen, onClose, transaction }) {
           userId: user.uid,
           createdAt: serverTimestamp(),
         });
-        toast.success("Transação adicionada!", { id: "modal-create" });
+        toast.success("Transação adicionada!");
       }
       handleClose();
     } catch (err) {
-      toast.error("Erro ao salvar: " + err.message, { id: "modal-error" });
+      toast.error("Erro ao salvar: " + err.message);
     }
   };
 
@@ -84,25 +81,15 @@ export default function TransactionModal({ isOpen, onClose, transaction }) {
             </button>
           </div>
           <form onSubmit={handleSubmit} className="space-y-4">
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value)}
-              className="w-full border p-2 rounded dark:bg-gray-700 dark:text-white"
-            >
+            <select value={type} onChange={(e) => setType(e.target.value)} className="w-full border p-2 rounded dark:bg-gray-700 dark:text-white">
               <option value="ganho">Ganho</option>
               <option value="gasto">Gasto</option>
             </select>
 
-            <select
-              value={category}
-              onChange={(e) => setCategory(e.target.value)}
-              className="w-full border p-2 rounded dark:bg-gray-700 dark:text-white"
-            >
+            <select value={category} onChange={(e) => setCategory(e.target.value)} className="w-full border p-2 rounded dark:bg-gray-700 dark:text-white">
               <option value="">Selecione</option>
               {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
+                <option key={cat} value={cat}>{cat}</option>
               ))}
             </select>
 

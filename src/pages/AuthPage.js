@@ -11,6 +11,7 @@ import { useNavigate } from "react-router-dom";
 import { setDoc, doc, getDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
 import DarkModeToggle from "../components/DarkModeToggle";
+import { Mail, Lock, User } from "lucide-react";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -47,52 +48,71 @@ export default function AuthPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 transition-colors">
+    <div className="min-h-screen bg-gradient-to-br from-blue-100 via-white to-blue-200 dark:from-gray-900 dark:to-gray-800 transition-colors flex items-center justify-center p-4">
       <div className="absolute top-4 right-4">
         <DarkModeToggle />
       </div>
-      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-8 rounded shadow-md w-96 space-y-4">
-        <h2 className="text-2xl font-semibold text-center">
-          {isLogin ? "Entrar" : "Criar Conta"}
+      <form
+        onSubmit={handleSubmit}
+        className="w-full max-w-md bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8 rounded-2xl shadow-2xl space-y-6 transition-all duration-300"
+      >
+        <h2 className="text-3xl font-bold text-center mb-2">
+          {isLogin ? "Bem-vindo de volta" : "Crie sua conta"}
         </h2>
+        <p className="text-sm text-center text-gray-500 dark:text-gray-400">
+          {isLogin ? "Faça login para continuar" : "Preencha os dados abaixo"}
+        </p>
 
         {!isLogin && (
-          <input
-            type="text"
-            placeholder="Nome"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-white"
-            required
-          />
+          <div className="relative">
+            <User className="absolute left-3 top-3 text-gray-400" size={20} />
+            <input
+              type="text"
+              placeholder="Nome completo"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              className="w-full pl-10 p-3 border rounded-lg bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+              required
+            />
+          </div>
         )}
 
-        <input
-          type="email"
-          placeholder="E-mail"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-white"
-          required
-        />
-        <input
-          type="password"
-          placeholder="Senha"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-white"
-          required
-        />
+        <div className="relative">
+          <Mail className="absolute left-3 top-3 text-gray-400" size={20} />
+          <input
+            type="email"
+            placeholder="E-mail"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            className="w-full pl-10 p-3 border rounded-lg bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+            required
+          />
+        </div>
 
-        <button className="w-full bg-blue-600 text-white p-2 rounded hover:bg-blue-700">
+        <div className="relative">
+          <Lock className="absolute left-3 top-3 text-gray-400" size={20} />
+          <input
+            type="password"
+            placeholder="Senha"
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            className="w-full pl-10 p-3 border rounded-lg bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+            required
+          />
+        </div>
+
+        <button className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold p-3 rounded-lg transition-all duration-200">
           {isLogin ? "Entrar" : "Cadastrar"}
         </button>
 
-        <p
-          onClick={() => setIsLogin(!isLogin)}
-          className="text-center text-sm text-blue-600 cursor-pointer"
-        >
-          {isLogin ? "Criar uma conta" : "Já tenho conta"}
+        <p className="text-center text-sm mt-2">
+          {isLogin ? "Ainda não tem conta?" : "Já tem uma conta?"}{" "}
+          <span
+            onClick={() => setIsLogin(!isLogin)}
+            className="text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
+          >
+            {isLogin ? "Crie agora" : "Entrar"}
+          </span>
         </p>
       </form>
     </div>
