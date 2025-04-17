@@ -3,6 +3,7 @@ import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
 import TransactionList from "../components/TransactionList";
+import DarkModeToggle from "../components/DarkModeToggle";
 import {
   PieChart,
   Pie,
@@ -179,24 +180,25 @@ export default function Dashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white p-6">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white dark:from-gray-900 dark:to-gray-800 p-6 text-gray-900 dark:text-gray-100 transition-colors">
       <header className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-800">
-          Bem-vindo, {userName}
-        </h1>
-        <button
-          onClick={() => signOut(auth)}
-          className="flex items-center gap-2 text-red-500 hover:text-red-700"
-        >
-          <LogOut size={20} />
-        </button>
+        <h1 className="text-2xl font-bold">Bem-vindo, {userName}</h1>
+        <div className="flex items-center gap-4">
+          <DarkModeToggle />
+          <button
+            onClick={() => signOut(auth)}
+            className="flex items-center gap-2 text-red-500 hover:text-red-700 dark:hover:text-red-400"
+          >
+            <LogOut size={20} />
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-wrap gap-4 mb-2 items-end">
         <select
           value={filterType}
           onChange={(e) => setFilterType(e.target.value)}
-          className="border p-2 rounded"
+          className="border p-2 rounded bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
         >
           <option value="todos">Todos</option>
           <option value="ganho">Ganhos</option>
@@ -207,19 +209,19 @@ export default function Dashboard() {
           type="date"
           value={startDate}
           onChange={(e) => setStartDate(e.target.value)}
-          className="border p-2 rounded"
+          className="border p-2 rounded bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
         />
 
         <input
           type="date"
           value={endDate}
           onChange={(e) => setEndDate(e.target.value)}
-          className="border p-2 rounded"
+          className="border p-2 rounded bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
         />
 
         <button
           onClick={handleClearFilters}
-          className="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300"
+          className="bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-100 px-4 py-2 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
         >
           Limpar Filtros
         </button>
@@ -243,7 +245,7 @@ export default function Dashboard() {
         <p className="text-red-600 text-sm mt-1 mb-4">{dateError}</p>
       )}
 
-      <p className="text-sm text-gray-600 mt-2 mb-4">
+      <p className="text-sm text-gray-600 dark:text-gray-400 mt-2 mb-4">
         Total de transações no período:{" "}
         <strong>{filteredTransactions.length}</strong>
       </p>
@@ -254,26 +256,25 @@ export default function Dashboard() {
         transition={{ duration: 0.4 }}
         className="grid grid-cols-1 md:grid-cols-3 gap-6"
       >
-        <div className="bg-white p-6 rounded-2xl shadow-lg col-span-1 md:col-span-2">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg col-span-1 md:col-span-2">
           <h2 className="text-lg font-semibold mb-4">Resumo Financeiro</h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
-              <p className="text-sm text-gray-500">Ganhos</p>
-              <p className="text-xl font-bold text-green-600">
+              <p className="text-sm text-gray-500 dark:text-gray-400">Ganhos</p>
+              <p className="text-xl font-bold text-green-500">
                 R$ {totalGanhos.toFixed(2)}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Gastos</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Gastos</p>
               <p className="text-xl font-bold text-red-500">
                 R$ {totalGastos.toFixed(2)}
               </p>
             </div>
             <div>
-              <p className="text-sm text-gray-500">Saldo</p>
+              <p className="text-sm text-gray-500 dark:text-gray-400">Saldo</p>
               <p
-                className={`text-xl font-bold ${balance >= 0 ? "text-green-600" : "text-red-600"
-                  }`}
+                className={`text-xl font-bold ${balance >= 0 ? "text-green-600" : "text-red-600"}`}
               >
                 R$ {balance.toFixed(2)}
               </p>
@@ -281,7 +282,7 @@ export default function Dashboard() {
           </div>
         </div>
 
-        <div className="bg-white p-6 rounded-2xl shadow-lg">
+        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
           <h2 className="text-lg font-semibold mb-4">Resumo</h2>
           <ResponsiveContainer width="100%" height={200}>
             <PieChart>
@@ -304,14 +305,14 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      {/* GRÁFICO DE BARRAS */}
-      <div className="mt-6 bg-white p-6 rounded-2xl shadow-lg">
+      {/* Gráfico de Barras */}
+      <div className="mt-6 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
         <h2 className="text-lg font-semibold mb-4">Evolução por Mês</h2>
         <ResponsiveContainer width="100%" height={300}>
           <BarChart data={groupedByMonth()}>
             <CartesianGrid strokeDasharray="3 3" />
-            <XAxis dataKey="month" />
-            <YAxis />
+            <XAxis dataKey="month" stroke="#ccc" />
+            <YAxis stroke="#ccc" />
             <Tooltip />
             <Bar dataKey="ganhos" fill="#22c55e" name="Ganhos" />
             <Bar dataKey="gastos" fill="#ef4444" name="Gastos" />
@@ -320,10 +321,7 @@ export default function Dashboard() {
       </div>
 
       <div className="mt-6">
-        <TransactionList
-          transactions={filteredTransactions}
-          onEdit={handleEdit}
-        />
+        <TransactionList transactions={filteredTransactions} onEdit={handleEdit} />
       </div>
 
       <TransactionModal

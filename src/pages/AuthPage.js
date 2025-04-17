@@ -1,3 +1,4 @@
+// pages/AuthPage.js
 import { useState } from "react";
 import { auth, db } from "../firebase";
 import {
@@ -9,6 +10,7 @@ import {
 import { useNavigate } from "react-router-dom";
 import { setDoc, doc, getDoc } from "firebase/firestore";
 import { toast } from "react-hot-toast";
+import DarkModeToggle from "../components/DarkModeToggle";
 
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
@@ -21,42 +23,35 @@ export default function AuthPage() {
     e.preventDefault();
     try {
       if (isLogin) {
-        // Login
         const result = await signInWithEmailAndPassword(auth, email, password);
-
-        // Verifica se usuário está cadastrado no Firestore
         const userDoc = await getDoc(doc(db, "users", result.user.uid));
         if (!userDoc.exists()) {
           await signOut(auth);
           throw new Error("Conta inválida. Dados do usuário não encontrados.");
         }
-
         toast.success("Login realizado com sucesso!");
-
       } else {
-        // Cadastro
         const result = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(result.user, { displayName: name });
-
         await setDoc(doc(db, "users", result.user.uid), {
           name,
           email,
           createdAt: new Date(),
         });
-
         toast.success("Conta criada com sucesso!");
       }
-
       navigate("/dashboard");
-
     } catch (err) {
       toast.error(err.message || "Erro inesperado.");
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-100">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded shadow-md w-96 space-y-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gray-100 dark:bg-gray-900 transition-colors">
+      <div className="absolute top-4 right-4">
+        <DarkModeToggle />
+      </div>
+      <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 p-8 rounded shadow-md w-96 space-y-4">
         <h2 className="text-2xl font-semibold text-center">
           {isLogin ? "Entrar" : "Criar Conta"}
         </h2>
@@ -67,7 +62,7 @@ export default function AuthPage() {
             placeholder="Nome"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="w-full p-2 border rounded"
+            className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-white"
             required
           />
         )}
@@ -77,7 +72,7 @@ export default function AuthPage() {
           placeholder="E-mail"
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-white"
           required
         />
         <input
@@ -85,7 +80,7 @@ export default function AuthPage() {
           placeholder="Senha"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          className="w-full p-2 border rounded"
+          className="w-full p-2 border rounded bg-white dark:bg-gray-700 dark:text-white"
           required
         />
 
