@@ -13,6 +13,26 @@ import { toast } from "react-hot-toast";
 import DarkModeToggle from "../components/DarkModeToggle";
 import { Mail, Lock, User } from "lucide-react";
 
+// Função para traduzir os erros do Firebase
+const traduzirErroFirebase = (codigo) => {
+  switch (codigo) {
+    case "auth/email-already-in-use":
+      return "Este e-mail já está em uso. Faça login ou use outro e-mail.";
+    case "auth/invalid-email":
+      return "E-mail inválido. Verifique e tente novamente.";
+    case "auth/user-not-found":
+      return "Usuário não encontrado. Verifique seu e-mail ou cadastre-se.";
+    case "auth/wrong-password":
+      return "Senha incorreta. Tente novamente.";
+    case "auth/weak-password":
+      return "A senha precisa ter pelo menos 6 caracteres.";
+    case "auth/network-request-failed":
+      return "Erro de conexão. Verifique sua internet.";
+    default:
+      return "Ocorreu um erro inesperado. Tente novamente.";
+  }
+};
+
 export default function AuthPage() {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState("");
@@ -43,7 +63,8 @@ export default function AuthPage() {
       }
       navigate("/dashboard");
     } catch (err) {
-      toast.error(err.message || "Erro inesperado.");
+      const mensagemAmigavel = traduzirErroFirebase(err.code);
+      toast.error(mensagemAmigavel || err.message);
     }
   };
 

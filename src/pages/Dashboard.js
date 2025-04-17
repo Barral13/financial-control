@@ -1,3 +1,4 @@
+// Dashboard.jsx
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
@@ -93,27 +94,35 @@ export default function Dashboard() {
   const filteredTransactions = transactions.filter((t) => {
     const start = startDate ? new Date(startDate) : null;
     const end = endDate ? new Date(new Date(endDate).getTime() + 86399999) : null;
-
     const periodMatch = (!start || t.createdAt >= start) && (!end || t.createdAt <= end);
     const typeMatch = filterType === "todos" || t.type === filterType;
     const categoryMatch = filterCategory === "todas" || t.category === filterCategory;
-
     return periodMatch && typeMatch && categoryMatch;
   });
 
-  const totalGanhos = filteredTransactions
+  const totalGanhosFiltrados = filteredTransactions
     .filter((t) => t.type === "ganho")
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const totalGastos = filteredTransactions
+  const totalGastosFiltrados = filteredTransactions
     .filter((t) => t.type === "gasto")
     .reduce((acc, t) => acc + t.amount, 0);
 
-  const balance = totalGanhos - totalGastos;
+  const saldoFiltrado = totalGanhosFiltrados - totalGastosFiltrados;
+
+  const totalGanhos = transactions
+    .filter((t) => t.type === "ganho")
+    .reduce((acc, t) => acc + t.amount, 0);
+
+  const totalGastos = transactions
+    .filter((t) => t.type === "gasto")
+    .reduce((acc, t) => acc + t.amount, 0);
+
+  const saldoTotal = totalGanhos - totalGastos;
 
   const chartData = [
-    { name: "Ganhos", value: totalGanhos },
-    { name: "Gastos", value: totalGastos },
+    { name: "Ganhos", value: totalGanhosFiltrados },
+    { name: "Gastos", value: totalGastosFiltrados },
   ];
 
   const groupedByMonth = () => {
@@ -132,9 +141,9 @@ export default function Dashboard() {
     doc.setFontSize(18);
     doc.text("Relatório de Transações", 14, 22);
     doc.setFontSize(12);
-    doc.text(`Ganhos: R$ ${totalGanhos.toFixed(2)}`, 14, 32);
-    doc.text(`Gastos: R$ ${totalGastos.toFixed(2)}`, 14, 39);
-    doc.text(`Saldo: R$ ${balance.toFixed(2)}`, 14, 46);
+    doc.text(`Ganhos: R$ ${totalGanhosFiltrados.toFixed(2)}`, 14, 32);
+    doc.text(`Gastos: R$ ${totalGastosFiltrados.toFixed(2)}`, 14, 39);
+    doc.text(`Saldo: R$ ${saldoFiltrado.toFixed(2)}`, 14, 46);
 
     const ganhos = filteredTransactions.filter((t) => t.type === "ganho");
     const gastos = filteredTransactions.filter((t) => t.type === "gasto");
@@ -164,14 +173,14 @@ export default function Dashboard() {
     filterType === "ganho"
       ? incomeCategories
       : filterType === "gasto"
-      ? expenseCategories
-      : [...new Set(transactions.map((t) => t.category))];
+        ? expenseCategories
+        : [...new Set(transactions.map((t) => t.category))];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-100 to-white dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 text-gray-900 dark:text-gray-100 transition-colors">
+    <div className="min-h-screen max-w-screen-xl mx-auto bg-gradient-to-br from-blue-100 to-white dark:from-gray-900 dark:to-gray-800 p-4 sm:p-6 text-gray-900 dark:text-gray-100 transition-colors">
       <header className="flex flex-col sm:flex-row sm:justify-between items-start sm:items-center gap-4 mb-6">
         <h1 className="text-2xl font-bold">Bem-vindo, {userName}</h1>
-        <div className="flex items-center gap-4 w-full sm:w-auto justify-between">
+        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto justify-between">
           <DarkModeToggle />
           <button
             onClick={() => signOut(auth)}
@@ -211,15 +220,16 @@ export default function Dashboard() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.4 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6"
+        className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6"
       >
-        <ResumoCard label="Ganhos" value={totalGanhos} color="text-green-500" />
-        <ResumoCard label="Gastos" value={totalGastos} color="text-red-500" />
-        <ResumoCard label="Saldo" value={balance} color={balance >= 0 ? "text-green-600" : "text-red-600"} />
+        <ResumoCard label="Ganhos (período)" value={totalGanhosFiltrados} color="text-green-500" />
+        <ResumoCard label="Gastos (período)" value={totalGastosFiltrados} color="text-red-500" />
+        <ResumoCard label="Saldo (período)" value={saldoFiltrado} color={saldoFiltrado >= 0 ? "text-green-600" : "text-red-600"} />
+        <ResumoCard label="Saldo Total da Conta" value={saldoTotal} color={saldoTotal >= 0 ? "text-blue-600" : "text-red-700"} />
       </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg md:col-span-2">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-md lg:col-span-2">
           <h2 className="text-lg font-semibold mb-4">Evolução por Mês</h2>
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={groupedByMonth()}>
@@ -233,9 +243,9 @@ export default function Dashboard() {
           </ResponsiveContainer>
         </div>
 
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-lg">
+        <div className="bg-white dark:bg-gray-800 p-4 sm:p-6 rounded-2xl shadow-md">
           <h2 className="text-lg font-semibold mb-4">Resumo</h2>
-          <ResponsiveContainer width="100%" height={200}>
+          <ResponsiveContainer width="100%" height={240}>
             <PieChart>
               <Pie
                 data={chartData}
@@ -243,7 +253,7 @@ export default function Dashboard() {
                 nameKey="name"
                 cx="50%"
                 cy="50%"
-                outerRadius={60}
+                outerRadius={70}
                 label
               >
                 {chartData.map((entry, index) => (
@@ -256,8 +266,14 @@ export default function Dashboard() {
         </div>
       </div>
 
-      <div className="mt-6">
-        <TransactionList transactions={filteredTransactions} onEdit={(t) => { setEditingTransaction(t); setModalOpen(true); }} />
+      <div className="mt-6 overflow-x-auto">
+        <TransactionList
+          transactions={filteredTransactions}
+          onEdit={(t) => {
+            setEditingTransaction(t);
+            setModalOpen(true);
+          }}
+        />
       </div>
 
       <TransactionModal
