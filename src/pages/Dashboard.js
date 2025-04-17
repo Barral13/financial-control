@@ -1,7 +1,6 @@
 import { signOut } from "firebase/auth";
 import { auth, db } from "../firebase";
 import { useAuthState } from "react-firebase-hooks/auth";
-import TransactionForm from "../components/TransactionForm";
 import TransactionList from "../components/TransactionList";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from "recharts";
 import { LogOut } from "lucide-react";
@@ -15,6 +14,7 @@ import {
   getDoc,
   doc,
 } from "firebase/firestore";
+import TransactionModal from "../components/TransactionModal";
 
 const COLORS = ["#22c55e", "#ef4444"];
 
@@ -24,6 +24,8 @@ export default function Dashboard() {
   const [userName, setUserName] = useState("");
   const [filterType, setFilterType] = useState("todos");
   const [filterPeriod, setFilterPeriod] = useState("");
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingTransaction, setEditingTransaction] = useState(null);
 
   useEffect(() => {
     if (!user) return;
@@ -40,7 +42,11 @@ export default function Dashboard() {
 
     fetchUserData();
 
-    const q = query(collection(db, "transactions"), where("userId", "==", user.uid));
+    const q = query(
+      collection(db, "transactions"),
+      where("userId", "==", user.uid)
+    );
+
     const unsub = onSnapshot(q, (snapshot) => {
       const data = snapshot.docs.map((doc) => {
         const docData = doc.data();
@@ -61,8 +67,10 @@ export default function Dashboard() {
 
     const periodMatch =
       filterPeriod === "" ||
-      (filterPeriod === "7d" && now - t.createdAt <= 7 * 24 * 60 * 60 * 1000) ||
-      (filterPeriod === "30d" && now - t.createdAt <= 30 * 24 * 60 * 60 * 1000) ||
+      (filterPeriod === "7d" &&
+        now - t.createdAt <= 7 * 24 * 60 * 60 * 1000) ||
+      (filterPeriod === "30d" &&
+        now - t.createdAt <= 30 * 24 * 60 * 60 * 1000) ||
       (filterPeriod === "2024" && t.createdAt.getFullYear() === 2024);
 
     const typeMatch = filterType === "todos" || t.type === filterType;
@@ -85,6 +93,16 @@ export default function Dashboard() {
     { name: "Gastos", value: totalGastos },
   ];
 
+  const handleEdit = (transaction) => {
+    setEditingTransaction(transaction);
+    setModalOpen(true);
+  };
+
+  const handleNew = () => {
+    setEditingTransaction(null);
+    setModalOpen(true);
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-white p-6">
       <header className="flex justify-between items-center mb-8">
@@ -96,7 +114,6 @@ export default function Dashboard() {
           className="flex items-center gap-2 text-red-500 hover:text-red-700"
         >
           <LogOut size={20} />
-          Sair
         </button>
       </header>
 
@@ -120,6 +137,13 @@ export default function Dashboard() {
           <option value="30d">Últimos 30 dias</option>
           <option value="2024">Ano 2024</option>
         </select>
+
+        <button
+          onClick={handleNew}
+          className="ml-auto bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600"
+        >
+          Nova Transação
+        </button>
       </div>
 
       <motion.div
@@ -133,15 +157,23 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div>
               <p className="text-sm text-gray-500">Ganhos</p>
-              <p className="text-xl font-bold text-green-600">R$ {totalGanhos.toFixed(2)}</p>
+              <p className="text-xl font-bold text-green-600">
+                R$ {totalGanhos.toFixed(2)}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Gastos</p>
-              <p className="text-xl font-bold text-red-500">R$ {totalGastos.toFixed(2)}</p>
+              <p className="text-xl font-bold text-red-500">
+                R$ {totalGastos.toFixed(2)}
+              </p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Saldo</p>
-              <p className={`text-xl font-bold ${balance >= 0 ? "text-green-600" : "text-red-600"}`}>
+              <p
+                className={`text-xl font-bold ${
+                  balance >= 0 ? "text-green-600" : "text-red-600"
+                }`}
+              >
                 R$ {balance.toFixed(2)}
               </p>
             </div>
@@ -171,13 +203,15 @@ export default function Dashboard() {
         </div>
       </motion.div>
 
-      <div className="mt-8">
-        <TransactionForm />
+      <div className="mt-6">
+        <TransactionList transactions={filteredTransactions} onEdit={handleEdit} />
       </div>
 
-      <div className="mt-4">
-        <TransactionList transactions={filteredTransactions} />
-      </div>
+      <TransactionModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        transaction={editingTransaction}
+      />
     </div>
   );
 }

@@ -6,8 +6,7 @@ import { Toaster } from "react-hot-toast";
 
 function App() {
   return (
-    <>
-      <Toaster position="top-center" />
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100 transition-colors">
       <Routes>
         <Route path="/" element={<AuthPage />} />
         <Route
@@ -20,7 +19,7 @@ function App() {
         />
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
-    </>
+    </div>
   );
 }
 

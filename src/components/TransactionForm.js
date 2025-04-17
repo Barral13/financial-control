@@ -1,23 +1,49 @@
-import { useState } from "react";
+// TransactionForm.js
+import { useState, useEffect } from "react";
 import { db, auth } from "../firebase";
-import { addDoc, collection, serverTimestamp } from "firebase/firestore";
+import {
+  addDoc,
+  updateDoc,
+  doc,
+  collection,
+  serverTimestamp,
+} from "firebase/firestore";
 import { useAuthState } from "react-firebase-hooks/auth";
 import { toast } from "react-hot-toast";
 
 const incomeCategories = ["Salário", "Investimentos", "Doações", "Outros"];
-const expenseCategories = ["Alimentação", "Transporte", "Lazer", "Educação", "Saúde", "Moradia", "Impostos", "Outros"];
+const expenseCategories = [
+  "Alimentação",
+  "Transporte",
+  "Lazer",
+  "Educação",
+  "Saúde",
+  "Moradia",
+  "Impostos",
+  "Outros",
+];
 
-export default function TransactionForm() {
+export default function TransactionForm({ selectedTransaction, clearEdit }) {
   const [type, setType] = useState("ganho");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
   const [user, loading] = useAuthState(auth);
 
+  useEffect(() => {
+    if (selectedTransaction) {
+      setType(selectedTransaction.type);
+      setAmount(selectedTransaction.amount.toString());
+      setCategory(selectedTransaction.category);
+    }
+  }, [selectedTransaction]);
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    toast.dismiss(); // Evita toasts empilhados
+
     if (!user) {
-      toast.error("Você precisa estar logado para adicionar uma transação.");
+      toast.error("Você precisa estar logado.");
       return;
     }
 
@@ -27,25 +53,40 @@ export default function TransactionForm() {
     }
 
     try {
-      await addDoc(collection(db, "transactions"), {
-        type,
-        amount: parseFloat(amount),
-        category,
-        userId: user.uid,
-        createdAt: serverTimestamp(),
-      });
-      toast.success("Transação adicionada com sucesso!");
+      if (selectedTransaction) {
+        await updateDoc(doc(db, "transactions", selectedTransaction.id), {
+          type,
+          amount: parseFloat(amount),
+          category,
+        });
+        toast.success("Transação atualizada!", { id: "update-success" });
+        clearEdit();
+      } else {
+        await addDoc(collection(db, "transactions"), {
+          type,
+          amount: parseFloat(amount),
+          category,
+          userId: user.uid,
+          createdAt: serverTimestamp(),
+        });
+        toast.success("Transação adicionada!", { id: "create-success" });
+      }
+
       setAmount("");
       setCategory("");
+      setType("ganho");
     } catch (err) {
-      toast.error("Erro ao adicionar transação: " + err.message);
+      toast.error("Erro ao salvar transação: " + err.message, { id: "form-error" });
     }
   };
 
   const categories = type === "ganho" ? incomeCategories : expenseCategories;
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white p-4 rounded shadow mb-6 space-y-4">
+    <form
+      onSubmit={handleSubmit}
+      className="bg-white p-4 rounded shadow mb-6 space-y-4"
+    >
       <div className="flex flex-wrap gap-4">
         <select
           value={type}
@@ -63,7 +104,9 @@ export default function TransactionForm() {
         >
           <option value="">Selecione</option>
           {categories.map((cat) => (
-            <option key={cat} value={cat}>{cat}</option>
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
           ))}
         </select>
 
@@ -77,8 +120,18 @@ export default function TransactionForm() {
         />
 
         <button className="bg-green-500 text-white px-4 py-2 rounded hover:bg-green-600">
-          Adicionar
+          {selectedTransaction ? "Atualizar" : "Adicionar"}
         </button>
+
+        {selectedTransaction && (
+          <button
+            type="button"
+            onClick={clearEdit}
+            className="text-gray-500 hover:underline"
+          >
+            Cancelar edição
+          </button>
+        )}
       </div>
     </form>
   );

@@ -1,14 +1,18 @@
+// hooks/useDarkMode.js
 import { useEffect, useState } from "react";
 
 export default function useDarkMode() {
-  const [darkMode, setDarkMode] = useState(() => {
-    const storedTheme = localStorage.getItem("theme");
-    const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-    return storedTheme ? storedTheme === "dark" : prefersDark;
-  });
+  const getInitialTheme = () => {
+    if (typeof window === "undefined") return false;
+    const stored = localStorage.getItem("theme");
+    if (stored) return stored === "dark";
+    return window.matchMedia("(prefers-color-scheme: dark)").matches;
+  };
+
+  const [darkMode, setDarkMode] = useState(getInitialTheme);
 
   useEffect(() => {
-    const root = window.document.documentElement;
+    const root = document.documentElement;
     if (darkMode) {
       root.classList.add("dark");
       localStorage.setItem("theme", "dark");

@@ -1,8 +1,13 @@
 import { motion, AnimatePresence } from "framer-motion";
+import { deleteDoc, doc } from "firebase/firestore";
+import { db } from "../firebase";
+import { toast } from "react-hot-toast";
+import { useState } from "react";
+import ConfirmDeleteModal from "./ConfirmDeleteModal";
 
 function groupByDate(transactions) {
   return transactions.reduce((acc, transaction) => {
-    const dateObj = transaction.createdAt?.toDate?.() || new Date();
+    const dateObj = transaction.createdAt || new Date();
     const dateStr = dateObj.toLocaleDateString("pt-BR");
     if (!acc[dateStr]) acc[dateStr] = [];
     acc[dateStr].push(transaction);
@@ -10,28 +15,19 @@ function groupByDate(transactions) {
   }, {});
 }
 
-export default function TransactionList({ transactions }) {
-  const isLoading = transactions === null;
+export default function TransactionList({ transactions, onEdit }) {
+  const [deleteId, setDeleteId] = useState(null);
 
-  if (isLoading) {
-    return (
-      <div className="bg-white p-4 rounded shadow">
-        <h2 className="text-xl font-semibold mb-4">Transações</h2>
-        <p className="text-gray-400 text-sm animate-pulse">Carregando transações...</p>
-      </div>
-    );
-  }
-
-  if (transactions.length === 0) {
-    return (
-      <div className="bg-white p-4 rounded shadow">
-        <h2 className="text-xl font-semibold mb-4">Transações</h2>
-        <p className="text-gray-500 text-sm flex items-center gap-2">
-          📭 Nenhuma transação ainda.
-        </p>
-      </div>
-    );
-  }
+  const handleDelete = async (id) => {
+    toast.dismiss(); // Fecha toasts ativos
+  
+    try {
+      await deleteDoc(doc(db, "transactions", id));
+      toast.success("Transação excluída.", { id: "delete-success" });
+    } catch (err) {
+      toast.error("Erro ao excluir: " + err.message, { id: "delete-error" });
+    }
+  };  
 
   const grouped = groupByDate(transactions);
 
@@ -54,8 +50,28 @@ export default function TransactionList({ transactions }) {
                     className="border-b py-2 flex justify-between text-sm text-gray-700"
                   >
                     <span>{t.category}</span>
-                    <span className={t.type === "ganho" ? "text-green-600" : "text-red-600"}>
-                      {t.type === "gasto" && "-"}R$ {t.amount.toFixed(2)}
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={
+                          t.type === "ganho"
+                            ? "text-green-600"
+                            : "text-red-600"
+                        }
+                      >
+                        {t.type === "gasto" && "-"}R$ {t.amount.toFixed(2)}
+                      </span>
+                      <button
+                        onClick={() => onEdit(t)}
+                        className="bg-blue-100 text-blue-600 px-2 py-1 rounded hover:bg-blue-200 text-xs"
+                      >
+                        Editar
+                      </button>
+                      <button
+                        onClick={() => setDeleteId(t.id)}
+                        className="bg-red-100 text-red-600 px-2 py-1 rounded hover:bg-red-200 text-xs"
+                      >
+                        Excluir
+                      </button>
                     </span>
                   </motion.li>
                 ))}
@@ -64,6 +80,15 @@ export default function TransactionList({ transactions }) {
           </li>
         ))}
       </ul>
+
+      <ConfirmDeleteModal
+        isOpen={!!deleteId}
+        onClose={() => setDeleteId(null)}
+        onConfirm={() => {
+          handleDelete(deleteId);
+          setDeleteId(null);
+        }}
+      />
     </div>
   );
 }
