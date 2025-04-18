@@ -57,7 +57,7 @@ export default function AuthPage() {
       verifyPasswordResetCode(auth, code)
         .then((email) => {
           setOobCode(code);
-          setEmail(email); // Preenche o e-mail automaticamente
+          setEmail(email);
           setIsResetConfirm(true);
         })
         .catch(() => {
@@ -126,7 +126,9 @@ export default function AuthPage() {
     try {
       await confirmPasswordReset(auth, oobCode, password);
       toast.success("Senha redefinida com sucesso!");
-      navigate("/");
+      // Redireciona para o login interno da AuthPage
+      setIsResetConfirm(false);
+      setIsLogin(true);
     } catch (err) {
       toast.error("Erro ao redefinir a senha. Tente novamente.");
     }
@@ -143,8 +145,8 @@ export default function AuthPage() {
           isResetConfirm
             ? handlePasswordResetConfirm
             : isResetRequest
-              ? handlePasswordResetRequest
-              : handleSubmit
+            ? handlePasswordResetRequest
+            : handleSubmit
         }
         className="w-full max-w-md bg-white dark:bg-gray-900 text-gray-800 dark:text-gray-100 p-8 rounded-2xl shadow-2xl space-y-6 transition-all duration-300"
       >
@@ -152,20 +154,20 @@ export default function AuthPage() {
           {isResetConfirm
             ? "Definir nova senha"
             : isResetRequest
-              ? "Recuperar senha"
-              : isLogin
-                ? "Bem-vindo de volta"
-                : "Crie sua conta"}
+            ? "Recuperar senha"
+            : isLogin
+            ? "Bem-vindo de volta"
+            : "Crie sua conta"}
         </h2>
 
         <p className="text-sm text-center text-gray-500 dark:text-gray-400">
           {isResetConfirm
             ? "Digite sua nova senha"
             : isResetRequest
-              ? "Informe seu e-mail para redefinir a senha"
-              : isLogin
-                ? "Faça login para continuar"
-                : "Preencha os dados abaixo"}
+            ? "Informe seu e-mail para redefinir a senha"
+            : isLogin
+            ? "Faça login para continuar"
+            : "Preencha os dados abaixo"}
         </p>
 
         {!isLogin && !isResetRequest && !isResetConfirm && (
@@ -191,7 +193,7 @@ export default function AuthPage() {
             onChange={(e) => setEmail(e.target.value)}
             className="w-full pl-10 p-3 border rounded-lg bg-white dark:bg-gray-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-400"
             required
-            disabled={isResetConfirm} // campo desativado se estiver em modo redefinir senha
+            disabled={isResetConfirm}
           />
         </div>
 
@@ -227,10 +229,10 @@ export default function AuthPage() {
           {isResetConfirm
             ? "Redefinir senha"
             : isResetRequest
-              ? "Enviar e-mail"
-              : isLogin
-                ? "Entrar"
-                : "Cadastrar"}
+            ? "Enviar e-mail"
+            : isLogin
+            ? "Entrar"
+            : "Cadastrar"}
         </button>
 
         {!isResetConfirm && isLogin && !isResetRequest && (
@@ -247,11 +249,11 @@ export default function AuthPage() {
             {isResetRequest
               ? "Lembrou da senha?"
               : isLogin
-                ? "Ainda não tem conta?"
-                : "Já tem uma conta?"}{" "}
+              ? "Ainda não tem conta?"
+              : "Já tem uma conta?"}{" "}
             <span
               onClick={() => {
-                setIsLogin(true);
+                setIsLogin(!isLogin);
                 setIsResetRequest(false);
               }}
               className="text-blue-600 dark:text-blue-400 cursor-pointer hover:underline"
